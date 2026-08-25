@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Chat Canvas</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="../icons/icon-48.png" alt="" width="34" height="34">
+    <div>
+      <h1>Chat Canvas</h1>
+      <p>Wide, tidy, navigable chats</p>
+    </div>
+    <label class="switch master" title="Enable Chat Canvas">
+      <input id="enabled" type="checkbox">
+      <span aria-hidden="true"></span>
+    </label>
+  </header>
+
+  <main>
+    <section>
+      <label class="row" for="wideEnabled">
+        <span><strong>Wide chat</strong><small>Reduce left and right margins</small></span>
+        <span class="switch"><input id="wideEnabled" type="checkbox"><span aria-hidden="true"></span></span>
+      </label>
+      <div class="slider-row" id="widthRow">
+        <label for="width">Content width</label>
+        <output id="widthValue" for="width">88%</output>
+        <input id="width" type="range" min="55" max="100" step="1" value="88">
+      </div>
+    </section>
+
+    <section>
+      <label class="row" for="collapseEnabled">
+        <span><strong>Collapsible messages</strong><small>Collapse both your messages and AI replies</small></span>
+        <span class="switch"><input id="collapseEnabled" type="checkbox"><span aria-hidden="true"></span></span>
+      </label>
+      <label class="row" for="outlineEnabled">
+        <span><strong>Conversation outline</strong><small>Jump to prompts and collapse in bulk</small></span>
+        <span class="switch"><input id="outlineEnabled" type="checkbox"><span aria-hidden="true"></span></span>
+      </label>
+    </section>
+
+    <section>
+      <h2>Enabled sites</h2>
+      <div class="sites">
+        <label><input id="site-chatgpt" type="checkbox"><span>ChatGPT</span></label>
+        <label><input id="site-gemini" type="checkbox"><span>Gemini</span></label>
+      </div>
+    </section>
+  </main>
+
+  <footer><span id="status" role="status">Changes apply instantly</span><button id="reset" type="button">Reset</button></footer>
+  <script src="popup.js"></script>
+</body>
+</html>

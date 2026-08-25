@@ -1,0 +1,175 @@
+/* Host-page styles only. The outline UI is isolated in a shadow root. */
+
+html.ccx-active {
+  --ccx-content-width: 88%;
+}
+
+/* The column receives the configured width; message wrappers then fill it.
+   Keeping these responsibilities separate avoids applying 88% repeatedly to
+   nested wrappers. */
+html.ccx-wide .ccx-wide-column {
+  box-sizing: border-box !important;
+  width: var(--ccx-content-width) !important;
+  max-width: var(--ccx-content-width) !important;
+  margin-inline: auto !important;
+}
+
+html.ccx-wide .ccx-wide-target {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* When no separate constrained ancestor exists, a turn is both the width
+   column and a fill target. The configured column width must win. */
+html.ccx-wide .ccx-wide-column.ccx-wide-target {
+  width: var(--ccx-content-width) !important;
+  max-width: var(--ccx-content-width) !important;
+  margin-inline: auto !important;
+}
+
+/* Authenticated ChatGPT constrains the visible text through inherited grid
+   variables rather than max-width on the turn wrapper. Generated class names
+   change frequently, but these layout variables are the stable contract. */
+html.ccx-wide .ccx-turn,
+html.ccx-wide .ccx-turn * {
+  --thread-content-max-width: 100% !important;
+  --content-max-width: 100% !important;
+}
+
+html.ccx-wide .ccx-turn [data-message-author-role="assistant"],
+html.ccx-wide .ccx-turn [data-message-role="assistant"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Keep the composer aligned with widened messages without changing its height. */
+html.ccx-wide .ccx-composer-target {
+  box-sizing: border-box !important;
+  width: var(--ccx-content-width) !important;
+  max-width: var(--ccx-content-width) !important;
+  margin-inline: auto !important;
+}
+
+.ccx-turn {
+  position: relative !important;
+  transition: background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.ccx-turn.ccx-assistant {
+  --ccx-accent: #10a37f;
+}
+
+.ccx-turn.ccx-user {
+  --ccx-accent: #7c6ee6;
+}
+
+.ccx-toggle {
+  position: absolute !important;
+  z-index: 20 !important;
+  top: 10px !important;
+  left: -10px !important;
+  width: 4px !important;
+  min-width: 4px !important;
+  height: calc(100% - 20px) !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 1.5px !important;
+  background: color-mix(in srgb, var(--ccx-accent) 24%, transparent) !important;
+  cursor: pointer !important;
+  opacity: .24 !important;
+  transition: width 120ms ease, opacity 120ms ease, transform 120ms ease !important;
+}
+
+.ccx-toggle:hover,
+.ccx-toggle:focus-visible {
+  width: 5px !important;
+  opacity: .65 !important;
+  transform: translateX(-.5px) !important;
+  outline: 1px solid color-mix(in srgb, var(--ccx-accent) 18%, transparent) !important;
+  outline-offset: 2px !important;
+}
+
+.ccx-summary {
+  display: none !important;
+}
+
+.ccx-turn.ccx-collapsed {
+  min-height: 42px !important;
+  margin-block: 2px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.ccx-turn.ccx-collapsed > :not(.ccx-toggle):not(.ccx-summary) {
+  display: none !important;
+}
+
+.ccx-turn.ccx-collapsed > .ccx-toggle {
+  top: 7px !important;
+  height: calc(100% - 14px) !important;
+}
+
+.ccx-turn.ccx-collapsed > .ccx-summary {
+  display: block !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-height: 42px !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  font: inherit !important;
+  text-align: left !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  opacity: .72 !important;
+}
+
+.ccx-highlight {
+  animation: ccx-pulse 1.2s ease-out !important;
+}
+
+@keyframes ccx-pulse {
+  0%, 35% {
+    background-color: color-mix(in srgb, #10a37f 18%, transparent);
+    box-shadow: 0 0 0 5px color-mix(in srgb, #10a37f 9%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 720px) {
+  html.ccx-wide .ccx-wide-column,
+  html.ccx-wide .ccx-composer-target {
+    width: calc(100% - 16px) !important;
+    max-width: calc(100% - 16px) !important;
+  }
+
+  html.ccx-wide .ccx-wide-target {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .ccx-toggle {
+    left: -3px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ccx-turn,
+  .ccx-toggle,
+  .ccx-highlight {
+    transition: none !important;
+    animation: none !important;
+  }
+}
