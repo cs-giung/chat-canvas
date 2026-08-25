@@ -9,6 +9,7 @@ body:
       label: Affected site
       options:
         - ChatGPT
+        - Claude
         - Gemini
         - Extension popup
         - Other
@@ -18,7 +19,7 @@ body:
     id: versions
     attributes:
       label: Extension and browser versions
-      placeholder: "Chat Canvas 1.0.0, Chrome 140"
+      placeholder: "Chat Canvas 1.1.0, Chrome 140"
     validations:
       required: true
   - type: textarea

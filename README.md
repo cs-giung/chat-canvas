@@ -19,7 +19,7 @@ _Click the preview to open the higher-quality MP4 recording._
 - Collapse-all and expand-all controls
 - Live conversation outline generated from your prompts
 - Compact outline mode that retains the prompt count and expand button
-- Per-site controls for ChatGPT and Gemini
+- Per-site controls for ChatGPT, Claude, and Gemini
 - Light mode, dark mode, and reduced-motion support
 - No analytics, accounts, remote code, or network requests
 
@@ -27,7 +27,7 @@ _Click the preview to open the higher-quality MP4 recording._
 
 ### From a GitHub release
 
-1. Download `chat-canvas-v1.0.0.zip` from the [latest release](https://github.com/cs-giung/chat-canvas/releases/latest).
+1. Download `chat-canvas-v1.1.0.zip` from the [latest release](https://github.com/cs-giung/chat-canvas/releases/latest).
 2. Unzip the archive.
 3. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge.
 4. Enable **Developer mode**.
@@ -56,6 +56,7 @@ Load the cloned `chat-canvas` directory as an unpacked extension using the steps
 Chat Canvas requests only Chrome's `storage` permission, which stores and optionally browser-syncs preferences. Its content scripts are restricted to:
 
 - `https://chatgpt.com/*`
+- `https://claude.ai/*`
 - `https://gemini.google.com/*`
 
 Rendered message text is processed temporarily in the page to create outline labels and collapsed previews. Conversation text is never stored or transmitted by Chat Canvas. See [PRIVACY.md](PRIVACY.md) for the complete policy.
@@ -66,7 +67,7 @@ Chat Canvas uses plain JavaScript, CSS, and Manifest V3. There are no runtime de
 
 ```sh
 ./scripts/validate.sh       # Static validation
-./scripts/package.sh        # Create dist/chat-canvas-v1.0.0.zip
+./scripts/package.sh        # Create dist/chat-canvas-v1.1.0.zip
 ```
 
 After changing extension files, reload Chat Canvas from `chrome://extensions` and refresh the target page.
@@ -81,7 +82,7 @@ AI products change their markup frequently. Platform selectors are grouped near 
 
 ## Disclaimer
 
-Chat Canvas is an independent open-source project. It is not affiliated with, endorsed by, or sponsored by OpenAI or Google. ChatGPT and Gemini are trademarks of their respective owners.
+Chat Canvas is an independent open-source project. It is not affiliated with, endorsed by, or sponsored by Anthropic, OpenAI, or Google. Claude, ChatGPT, and Gemini are trademarks of their respective owners.
 
 ## License
 

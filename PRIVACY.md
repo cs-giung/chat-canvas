@@ -26,6 +26,7 @@ The extension uses Chrome's `storage.sync` API to save settings such as content 
 Chat Canvas requests only the `storage` permission. Content scripts are restricted to:
 
 - `https://chatgpt.com/*`
+- `https://claude.ai/*`
 - `https://gemini.google.com/*`
 
 The extension does not use remote code or make network requests.

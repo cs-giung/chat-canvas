@@ -7,7 +7,7 @@
     width: 88,
     collapseEnabled: true,
     outlineEnabled: true,
-    sites: { chatgpt: true, gemini: true }
+    sites: { chatgpt: true, claude: true, gemini: true }
   };
 
   const SITE_CONFIG = {
@@ -31,6 +31,34 @@
         'form[data-type="composer"]',
         '#prompt-textarea',
         'form[data-mobile-composer]'
+      ]
+    },
+    claude: {
+      host: "claude.ai",
+      turns: [
+        '[data-test-render-count]:has([data-testid="user-message"])',
+        '[data-test-render-count]:has(.font-user-message)',
+        '[data-test-render-count]:has(.font-claude-response)',
+        '[data-test-render-count]:has(.font-claude-message)',
+        '[data-test-render-count]:has([data-is-streaming])',
+        '[data-test-render-count]:has([data-testid="file-thumbnail"]):not(:has(.font-claude-response, .font-claude-message, [data-is-streaming]))',
+        '[data-testid="user-message"]',
+        '[data-testid="assistant-message"]',
+        '[data-is-streaming]'
+      ],
+      users: [
+        '[data-testid="user-message"]',
+        '.font-user-message'
+      ],
+      assistants: [
+        '[data-testid="assistant-message"]',
+        '.font-claude-response',
+        '.font-claude-message',
+        '[data-is-streaming]'
+      ],
+      composers: [
+        '[data-testid="chat-input"]',
+        'div[contenteditable="true"].ProseMirror'
       ]
     },
     gemini: {
@@ -144,6 +172,10 @@
   function classifyTurn(root) {
     if (matchesAny(root, config.users)) return "user";
     if (matchesAny(root, config.assistants)) return "assistant";
+    if (
+      siteKey === "claude" &&
+      root.querySelector('[data-testid="file-thumbnail"]')
+    ) return "user";
     if (siteKey === "gemini") {
       if (root.matches("user-query")) return "user";
       if (root.matches("model-response")) return "assistant";
@@ -255,18 +287,32 @@
     clearWideTargets();
     if (!state.settings.wideEnabled) return;
 
-    const findConstrainedColumn = (start) => {
+    const findConstrainedColumns = (start) => {
+      const constrained = [];
       let candidate = start;
-      for (let depth = 0; candidate && depth < 8; depth += 1) {
+      for (let depth = 0; candidate && depth < 10; depth += 1) {
         if (candidate === document.body || candidate.tagName === "MAIN") break;
-        const maxWidth = getComputedStyle(candidate).maxWidth;
+        const style = getComputedStyle(candidate);
+        const maxWidth = style.maxWidth;
         const pixels = maxWidth.endsWith("px") ? Number.parseFloat(maxWidth) : NaN;
-        if (Number.isFinite(pixels) && pixels >= 320 && pixels < innerWidth * 0.96) {
-          return candidate;
-        }
+        const rect = candidate.getBoundingClientRect();
+        const parentRect = candidate.parentElement?.getBoundingClientRect();
+        const sideGap = parentRect ? parentRect.width - rect.width : 0;
+        const centerOffset = parentRect
+          ? Math.abs(
+              rect.left + rect.width / 2 -
+              (parentRect.left + parentRect.width / 2)
+            )
+          : Infinity;
+        const centeredAndNarrow =
+          rect.width >= 320 && sideGap >= 48 && centerOffset <= 4;
+        const hasPixelLimit =
+          Number.isFinite(pixels) && pixels >= 320 && pixels < innerWidth * 0.96;
+
+        if (hasPixelLimit || centeredAndNarrow) constrained.push(candidate);
         candidate = candidate.parentElement;
       }
-      return null;
+      return constrained;
     };
 
     const columns = new Set();
@@ -287,18 +333,32 @@
         }
       }
 
-      // Current ChatGPT wraps the transcript in a max-width conversation
-      // section. Find that stable layout constraint instead of relying on its
-      // generated class name. Other sites generally constrain each turn, so
-      // the turn itself remains the fallback column.
-      columns.add(findConstrainedColumn(root.parentElement) || root);
+      // Some hosts (notably Claude) stack multiple centered max-width
+      // wrappers. Apply the configured percentage once to the outermost
+      // constraint, then let every inner constraint fill that column.
+      const constrained = findConstrainedColumns(root.parentElement);
+      if (constrained.length) {
+        constrained.slice(0, -1).forEach((element) =>
+          element.classList.add("ccx-wide-target")
+        );
+        columns.add(constrained.at(-1));
+      } else {
+        columns.add(root);
+      }
     }
     columns.forEach((column) => column.classList.add("ccx-wide-column"));
 
     for (const composer of queryAll(config.composers)) {
       const anchor = composer.closest("form") || composer;
-      const wrapper = findConstrainedColumn(anchor) || anchor;
-      wrapper.classList.add("ccx-composer-target");
+      const constrained = findConstrainedColumns(anchor);
+      if (constrained.length) {
+        constrained.slice(0, -1).forEach((element) =>
+          element.classList.add("ccx-wide-target")
+        );
+        constrained.at(-1).classList.add("ccx-composer-target");
+      } else {
+        anchor.classList.add("ccx-composer-target");
+      }
     }
   }
 
@@ -393,7 +453,7 @@
   }
 
   function updateOutline(turns) {
-    if (!state.settings.outlineEnabled) {
+    if (!state.settings.outlineEnabled || turns.length === 0) {
       removePanel();
       return;
     }

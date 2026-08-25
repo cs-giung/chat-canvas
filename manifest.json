@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Chat Canvas: Wide, Collapse & Outline",
   "short_name": "Chat Canvas",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Widen AI chats, collapse long replies, and navigate conversations with an automatic outline.",
   "permissions": ["storage"],
   "action": {
@@ -25,6 +25,7 @@
     {
       "matches": [
         "https://chatgpt.com/*",
+        "https://claude.ai/*",
         "https://gemini.google.com/*"
       ],
       "js": ["content/content.js"],

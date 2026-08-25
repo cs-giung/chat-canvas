@@ -10,7 +10,11 @@ const assert = (condition, message) => {
 };
 
 const manifest = JSON.parse(read("manifest.json"));
-const expectedMatches = ["https://chatgpt.com/*", "https://gemini.google.com/*"];
+const expectedMatches = [
+  "https://chatgpt.com/*",
+  "https://claude.ai/*",
+  "https://gemini.google.com/*"
+];
 
 assert(manifest.manifest_version === 3, "manifest_version must be 3");
 assert(/^\d+\.\d+\.\d+$/.test(manifest.version), "version must use x.y.z format");
