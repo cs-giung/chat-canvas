@@ -6,6 +6,12 @@ A private, lightweight browser extension for making long AI conversations wider,
 [![Release](https://img.shields.io/github/v/release/cs-giung/chat-canvas)](https://github.com/cs-giung/chat-canvas/releases/latest)
 [![License](https://img.shields.io/github/license/cs-giung/chat-canvas)](LICENSE)
 
+## Demo
+
+[![Animated demonstration of Chat Canvas widening a conversation and using its outline controls](assets/chat-canvas-demo.gif)](assets/chat-canvas-demo.mp4)
+
+_Click the preview to open the higher-quality MP4 recording._
+
 ## Features
 
 - Adjustable message and composer width from 55% to 100%
