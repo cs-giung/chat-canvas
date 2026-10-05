@@ -27,12 +27,12 @@ _Click the preview to open the higher-quality MP4 recording._
 
 ### From a GitHub release
 
-1. Download `chat-canvas-v1.1.0.zip` from the [latest release](https://github.com/cs-giung/chat-canvas/releases/latest).
+1. Download the `chat-canvas-v*.zip` archive from the [latest release](https://github.com/cs-giung/chat-canvas/releases/latest).
 2. Unzip the archive.
 3. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge.
 4. Enable **Developer mode**.
 5. Select **Load unpacked** and choose the unzipped directory.
-6. Pin **Chat Canvas**, then refresh any open ChatGPT or Gemini tabs.
+6. Pin **Chat Canvas**, then refresh any open ChatGPT, Claude, or Gemini tabs.
 
 ### From source
 
@@ -63,14 +63,21 @@ Rendered message text is processed temporarily in the page to create outline lab
 
 ## Development
 
-Chat Canvas uses plain JavaScript, CSS, and Manifest V3. There are no runtime dependencies and no build step.
+Chat Canvas uses plain JavaScript, CSS, and Manifest V3. There are no runtime dependencies and no build step. Browser regression tests use Playwright as a development dependency.
 
 ```sh
 ./scripts/validate.sh       # Static validation
-./scripts/package.sh        # Create dist/chat-canvas-v1.1.0.zip
+./scripts/package.sh        # Create the versioned release archive in dist/
+npm ci                     # Install test dependencies
+npx playwright install chromium
+npm test                   # Browser regression tests using local DOM fixtures
 ```
 
 After changing extension files, reload Chat Canvas from `chrome://extensions` and refresh the target page.
+
+To update an existing unpacked installation, replace its files with the updated source (or run `git pull` in the cloned directory), select **Reload** for Chat Canvas in `chrome://extensions`, and refresh your chat tabs. Reloading the extension alone does not update content scripts already running in open tabs.
+
+The browser tests cover old and new ChatGPT message attributes, nested width constraints, streaming, virtualized message remounts, conversation navigation, preference changes, and existing Claude/Gemini controls. These fixtures complement manual checks on signed-in sites. On ChatGPT, prompt labels for off-screen turns fill in when their text is first rendered; labels already seen remain available while that conversation is open.
 
 AI products change their markup frequently. Platform selectors are grouped near the top of [`content/content.js`](content/content.js). Please include the affected site and browser version in bug reports.
 

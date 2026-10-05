@@ -14,23 +14,40 @@
     chatgpt: {
       host: "chatgpt.com",
       turns: [
-        'article[data-testid^="conversation-turn-"]',
         '[data-testid^="conversation-turn-"]',
+        '[data-turn="user"]',
+        '[data-turn="assistant"]',
+        '[data-turn-key]',
+        '[data-message-author-role="user"]',
+        '[data-message-author-role="assistant"]',
         '[data-message-role="user"]',
-        '[data-message-role="assistant"]'
+        '[data-message-role="assistant"]',
+        '[data-chatgpt-search-unit-key$=":user"]',
+        '[data-chatgpt-search-unit-key$=":assistant"]'
       ],
       users: [
+        '[data-turn="user"]',
         '[data-message-author-role="user"]',
-        '[data-message-role="user"]'
+        '[data-message-role="user"]',
+        '[data-chatgpt-search-unit-key$=":user"]'
       ],
       assistants: [
+        '[data-turn="assistant"]',
         '[data-message-author-role="assistant"]',
-        '[data-message-role="assistant"]'
+        '[data-message-role="assistant"]',
+        '[data-chatgpt-search-unit-key$=":assistant"]'
       ],
       composers: [
         'form[data-type="composer"]',
+        'form[data-chatgpt-composer]',
         '#prompt-textarea',
-        'form[data-mobile-composer]'
+        'form[data-mobile-composer]',
+        '[role="textbox"][contenteditable="true"][aria-label="Ask ChatGPT" i]',
+        '[role="textbox"][contenteditable="true"][aria-label="Message ChatGPT" i]',
+        '[role="textbox"][contenteditable="true"][aria-label="Chat with ChatGPT" i]',
+        'textarea[aria-label="Ask ChatGPT" i]',
+        'textarea[aria-label="Message ChatGPT" i]',
+        'textarea[aria-label="Chat with ChatGPT" i]'
       ]
     },
     claude: {
@@ -86,7 +103,9 @@
     panelHost: null,
     panelShadow: null,
     outlineList: null,
-    turnNumber: 0
+    turnNumber: 0,
+    pageKey: location.pathname + location.search,
+    turnData: new Map()
   };
 
   const queryAll = (selectors, root = document) => {
@@ -159,17 +178,24 @@
       return !element.parentElement?.closest(config.turns.join(","));
     });
 
-    // ChatGPT occasionally moves the stable role attribute outside the turn
-    // test id. This fallback keeps the extension useful during DOM rollouts.
-    if (siteKey === "chatgpt" && roots.length === 0) {
-      return queryAll([...config.users, ...config.assistants])
-        .map((node) => node.closest("article") || node.parentElement)
-        .filter(Boolean);
-    }
-    return [...new Set(roots)];
+    // Scope fallback message nodes to their own turn, even when old and new
+    // markup coexist. A generic article alone is not evidence of a message.
+    const canonical = siteKey === "chatgpt"
+      ? roots.map((node) => node.closest('[data-testid^="conversation-turn-"], [data-turn], [data-turn-key], article') || node)
+      : roots;
+    return [...new Set(canonical)]
+      .filter((root) => classifyTurn(root) !== "unknown")
+      .sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_PRECEDING ? 1 : -1);
   }
 
   function classifyTurn(root) {
+    if (siteKey === "chatgpt") {
+      const declared = root.getAttribute("data-turn") ||
+        root.getAttribute("data-message-author-role") ||
+        root.getAttribute("data-message-role") ||
+        root.getAttribute("data-chatgpt-search-unit-key")?.match(/:(user|assistant)$/)?.[1];
+      if (declared === "user" || declared === "assistant") return declared;
+    }
     if (matchesAny(root, config.users)) return "user";
     if (matchesAny(root, config.assistants)) return "assistant";
     if (
@@ -186,31 +212,54 @@
   function cleanText(element) {
     const clone = element.cloneNode(true);
     clone.querySelectorAll?.(
-      '.ccx-toggle, .ccx-summary, script, style, [aria-hidden="true"], .sr-only, [class*="srOnly"], [class*="sr-only"]'
+      'button, script, style, svg, [aria-hidden="true"], .sr-only, [class*="srOnly"], [class*="sr-only"]'
     ).forEach((node) => node.remove());
     return (clone.textContent || "").replace(/\s+/g, " ").trim();
   }
 
   function makeTitle(root, index) {
-    const text = cleanText(root);
+    const text = getTurnData(root).text;
     if (!text) return `Prompt ${index + 1}`;
     return text.length > 90 ? `${text.slice(0, 87)}…` : text;
   }
 
   function ensureTurn(root, role) {
+    root.classList.remove("ccx-user", "ccx-assistant", "ccx-unknown");
     root.classList.add("ccx-turn", `ccx-${role}`);
     if (!root.dataset.ccxId) {
       state.turnNumber += 1;
       root.dataset.ccxId = `ccx-turn-${state.turnNumber}`;
     }
+    const data = getTurnData(root);
+    const text = cleanText(root);
+    // Only previews are needed; keep a bounded, tab-local cache for unmounted
+    // turns rather than retaining the full contents of long responses.
+    if (text) data.text = text.slice(0, 111);
 
     if ((role === "assistant" || role === "user") && state.settings.collapseEnabled) {
       ensureCollapseControl(root);
+      setCollapsed(root, data.collapsed);
     } else {
       root.querySelectorAll(":scope > .ccx-toggle, :scope > .ccx-summary")
         .forEach((node) => node.remove());
       root.classList.remove("ccx-collapsed");
+      data.collapsed = false;
     }
+  }
+
+  function getTurnData(root) {
+    const message = root.querySelector('[data-message-id], [data-chatgpt-search-message-ids]');
+    // Generic test IDs (e.g. Claude's user-message) repeat across messages.
+    // Only ChatGPT's numbered turn test IDs identify a particular turn.
+    const identity = (siteKey === "chatgpt" && (
+      root.getAttribute("data-turn-id") || root.getAttribute("data-turn-key") ||
+      root.getAttribute("data-message-id") || root.getAttribute("data-chatgpt-search-message-ids") ||
+      root.getAttribute("data-testid")?.match(/^conversation-turn-\d+$/)?.[0] ||
+      message?.getAttribute("data-message-id") || message?.getAttribute("data-chatgpt-search-message-ids")
+    )) || root.dataset.ccxId;
+    const key = `${classifyTurn(root)}:${identity}`;
+    if (!state.turnData.has(key)) state.turnData.set(key, { text: "", collapsed: false });
+    return state.turnData.get(key);
   }
 
   function ensureCollapseControl(root) {
@@ -243,14 +292,16 @@
 
   function updateSummary(root) {
     const summary = root.querySelector(":scope > .ccx-summary");
-    if (!summary || root.classList.contains("ccx-collapsed")) return;
-    const text = cleanText(root);
-    summary.textContent = text
+    if (!summary) return;
+    const text = getTurnData(root).text;
+    const preview = text
       ? `${text.slice(0, 110)}${text.length > 110 ? "…" : ""}`
       : "Collapsed message";
+    if (summary.textContent !== preview) summary.textContent = preview;
   }
 
   function setCollapsed(root, collapsed) {
+    getTurnData(root).collapsed = collapsed;
     root.classList.toggle("ccx-collapsed", collapsed);
     const toggle = root.querySelector(":scope > .ccx-toggle");
     if (toggle) {
@@ -258,7 +309,7 @@
       toggle.setAttribute("aria-label", toggle.title);
       toggle.setAttribute("aria-expanded", String(!collapsed));
     }
-    if (!collapsed) updateSummary(root);
+    updateSummary(root);
   }
 
   function cleanTurn(root) {
@@ -287,10 +338,10 @@
     clearWideTargets();
     if (!state.settings.wideEnabled) return;
 
-    const findConstrainedColumns = (start) => {
+    const findConstrainedColumns = (start, stop = null) => {
       const constrained = [];
       let candidate = start;
-      for (let depth = 0; candidate && depth < 10; depth += 1) {
+      for (let depth = 0; candidate && candidate !== stop && depth < 20; depth += 1) {
         if (candidate === document.body || candidate.tagName === "MAIN") break;
         const style = getComputedStyle(candidate);
         const maxWidth = style.maxWidth;
@@ -318,6 +369,16 @@
     const columns = new Set();
     for (const root of turns) {
       root.classList.add("ccx-wide-target");
+      // New ChatGPT turns may have several inner width constraints. Follow
+      // the message's ancestors, stopping before the turn, to leave bubbles,
+      // code blocks, attachments, and other content widgets at their own sizes.
+      if (siteKey === "chatgpt") {
+        for (const message of queryAll([...config.users, ...config.assistants], root)) {
+          findConstrainedColumns(message.parentElement, root).forEach((element) =>
+            element.classList.add("ccx-wide-target")
+          );
+        }
+      }
       // The classic ChatGPT layout constrains a wrapper directly inside each
       // turn. Do not apply this broadly: on other layouts the first native
       // child can be the colored user bubble itself.
@@ -363,6 +424,7 @@
   }
 
   function createPanel() {
+    if (state.panelHost && !state.panelHost.isConnected) removePanel();
     if (state.panelHost || !state.settings.outlineEnabled || !isActive()) return;
     const host = document.createElement("div");
     host.id = "ccx-outline-host";
@@ -510,15 +572,45 @@
 
   function processPage() {
     if (!isActive()) return;
-    const turns = getTurnRoots();
-    turns.forEach((root) => ensureTurn(root, classifyTurn(root)));
-    markWideTargets(turns);
-    updateOutline(turns);
+    // Extension DOM writes must not feed back into the page observer.
+    state.observer?.disconnect();
+    try {
+      const pageKey = location.pathname + location.search;
+      if (pageKey !== state.pageKey) {
+        state.pageKey = pageKey;
+        state.turnData.clear();
+        document.querySelectorAll(".ccx-turn").forEach(cleanTurn);
+      }
+      const turns = getTurnRoots();
+      const current = new Set(turns);
+      document.querySelectorAll(".ccx-turn").forEach((root) => {
+        if (!current.has(root)) cleanTurn(root);
+      });
+      turns.forEach((root) => ensureTurn(root, classifyTurn(root)));
+      markWideTargets(turns);
+      updateOutline(turns);
+    } finally {
+      observePage();
+    }
   }
 
   function scheduleProcess() {
-    clearTimeout(state.rebuildTimer);
-    state.rebuildTimer = setTimeout(processPage, 180);
+    // Throttle rather than debounce: a continuous stream must still update.
+    if (state.rebuildTimer) return;
+    state.rebuildTimer = setTimeout(() => {
+      state.rebuildTimer = 0;
+      processPage();
+    }, 180);
+  }
+
+  function observePage() {
+    state.observer?.observe(document.documentElement, {
+      childList: true, subtree: true, characterData: true,
+      attributes: true,
+      attributeFilter: ["data-testid", "data-turn", "data-turn-key", "data-turn-id",
+        "data-message-author-role", "data-message-role", "data-message-id",
+        "data-chatgpt-search-unit-key", "data-chatgpt-search-message-ids"]
+    });
   }
 
   function start() {
@@ -529,15 +621,18 @@
 
     state.observer = new MutationObserver((mutations) => {
       if (!isActive()) return;
-      const meaningful = mutations.some((mutation) =>
-        [...mutation.addedNodes, ...mutation.removedNodes].some(
-          (node) => node.nodeType === Node.ELEMENT_NODE &&
-            !(node instanceof HTMLElement && node.closest?.("#ccx-outline-host"))
-        )
-      );
+      const meaningful = mutations.some((mutation) => {
+        const target = mutation.target instanceof Element
+          ? mutation.target : mutation.target.parentElement;
+        // Our own processing writes happen while disconnected. A host render
+        // removing our controls or panel should schedule their restoration.
+        return !target?.closest("#ccx-outline-host, .ccx-toggle, .ccx-summary");
+      });
       if (meaningful) scheduleProcess();
     });
-    state.observer.observe(document.documentElement, { childList: true, subtree: true });
+    observePage();
+    addEventListener("resize", scheduleProcess);
+    addEventListener("popstate", scheduleProcess);
 
     let scrollQueued = false;
     addEventListener("scroll", () => {

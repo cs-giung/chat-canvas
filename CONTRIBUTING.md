@@ -8,9 +8,10 @@ Contributions and focused bug reports are welcome.
 2. Load the repository root through **Load unpacked** at `chrome://extensions`.
 3. Make a focused change.
 4. Run `./scripts/validate.sh`.
-5. Reload the extension and test on every affected site.
+5. Run `npm ci`, `npx playwright install chromium`, and `npm test` for browser regressions.
+6. Reload the extension and test on every affected site.
 
-No dependency installation or build step is required.
+No dependency installation or build step is required to use the extension. Playwright is used only for development tests, which fulfill page requests with local fixtures and mock Chrome preference storage.
 
 ## Pull requests
 

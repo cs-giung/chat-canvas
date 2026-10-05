@@ -1,0 +1,10 @@
+{
+  "name": "chat-canvas",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/content.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.0"
+  }
+}

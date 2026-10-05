@@ -32,8 +32,13 @@ html.ccx-wide .ccx-wide-column.ccx-wide-target {
    variables rather than max-width on the turn wrapper. Generated class names
    change frequently, but these layout variables are the stable contract. */
 html.ccx-wide .ccx-turn,
-html.ccx-wide .ccx-turn * {
+html.ccx-wide .ccx-turn *,
+html.ccx-wide .ccx-wide-target,
+html.ccx-wide .ccx-wide-column,
+html.ccx-wide .ccx-composer-target,
+html.ccx-wide .ccx-composer-target * {
   --thread-content-max-width: 100% !important;
+  --thread-body-max-width: 100% !important;
   --content-max-width: 100% !important;
 }
 
@@ -98,6 +103,8 @@ html.ccx-wide .ccx-composer-target {
 }
 
 .ccx-turn.ccx-collapsed {
+  display: block !important;
+  height: auto !important;
   min-height: 42px !important;
   margin-block: 2px !important;
   border-radius: 0 !important;
@@ -150,6 +157,7 @@ html.ccx-wide .ccx-composer-target {
 
 @media (max-width: 720px) {
   html.ccx-wide .ccx-wide-column,
+  html.ccx-wide .ccx-wide-column.ccx-wide-target,
   html.ccx-wide .ccx-composer-target {
     width: calc(100% - 16px) !important;
     max-width: calc(100% - 16px) !important;

@@ -1,6 +1,7 @@
 .DS_Store
 Thumbs.db
 dist/
+node_modules/
 *.pem
 *.key
 *.auth-state.json

@@ -2,6 +2,21 @@
 
 All notable changes to Chat Canvas are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.1.1] - 2026-10-05
+
+### Fixed
+
+- ChatGPT turn detection now handles semantic turn roles, rollout search-unit attributes, and mixed old/new message markup in document order.
+- Nested ChatGPT message and composer constraints expand together, including the newer thread body width variable.
+- Streaming text and late message attributes update controls and labels without continuous observer rebuilds.
+- Outline labels and collapse state survive virtualized message remounts within a conversation; cached text clears on conversation navigation.
+- Collapsed virtualized turns release their fixed height, and mobile fallback turns use the available column width.
+
+### Added
+
+- Local browser regression tests for ChatGPT layouts, width alignment, message controls, streaming, virtualization, navigation, settings, and Claude/Gemini detection.
+- Instructions for updating an existing unpacked extension and refreshing its content scripts.
+
 ## [1.1.0] - 2026-08-25
 
 ### Added
@@ -28,5 +43,6 @@ All notable changes to Chat Canvas are documented here. The project follows [Sem
 - Light, dark, mobile, and reduced-motion styles.
 - Manifest V3 packaging with minimal permissions and no remote code.
 
+[1.1.1]: https://github.com/cs-giung/chat-canvas/releases/tag/v1.1.1
 [1.1.0]: https://github.com/cs-giung/chat-canvas/releases/tag/v1.1.0
 [1.0.0]: https://github.com/cs-giung/chat-canvas/releases/tag/v1.0.0

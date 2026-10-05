@@ -24,6 +24,15 @@ jobs:
       - name: Validate extension
         run: ./scripts/validate.sh
 
+      - name: Install browser test dependencies
+        run: npm ci
+
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Test browser behavior
+        run: npm test
+
       - name: Build release archive
         run: ./scripts/package.sh
 
