@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Chat Canvas: Wide, Collapse & Outline",
   "short_name": "Chat Canvas",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Widen ChatGPT and Gemini chats, collapse messages, navigate outlines, and export conversations as Markdown.",
   "permissions": ["storage"],
   "action": {

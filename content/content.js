@@ -149,19 +149,31 @@
   }
 
   function getTurnRoots() {
-    const roots = queryAll(config.turns).filter((element) => {
-      if (!(element instanceof HTMLElement)) return false;
-      return !element.parentElement?.closest(config.turns.join(","));
-    });
-
-    // Scope fallback message nodes to their own turn, even when old and new
-    // markup coexist. A generic article alone is not evidence of a message.
+    // Do not discard descendants until we know their ancestor represents ONE
+    // message. ChatGPT can put turn-key/article/turn-test-id wrappers around
+    // both roles; treating that wrapper as a user turn hides every AI reply.
+    const isSingleRole = (element) => {
+      const user = matchesAny(element, config.users);
+      const assistant = matchesAny(element, config.assistants);
+      return user !== assistant;
+    };
+    const roots = queryAll(config.turns).filter(element =>
+      element instanceof HTMLElement && isSingleRole(element)
+    );
     const canonical = siteKey === "chatgpt"
-      ? roots.map((node) => node.closest('[data-testid^="conversation-turn-"], [data-turn], [data-turn-key], article') || node)
+      ? roots.map(node => {
+          const shell = node.closest('[data-testid^="conversation-turn-"], [data-turn], [data-turn-key], article');
+          return shell && isSingleRole(shell) ? shell : node;
+        })
       : roots;
-    return [...new Set(canonical)]
-      .filter((root) => classifyTurn(root) !== "unknown")
-      .sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_PRECEDING ? 1 : -1);
+    const unique = [...new Set(canonical)];
+    const candidates = new Set(unique);
+    return unique.filter(root => {
+      for (let parent = root.parentElement; parent; parent = parent.parentElement) {
+        if (candidates.has(parent)) return false;
+      }
+      return classifyTurn(root) !== "unknown";
+    }).sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_PRECEDING ? 1 : -1);
   }
 
   function classifyTurn(root) {

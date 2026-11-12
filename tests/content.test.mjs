@@ -112,6 +112,61 @@ for (const layout of ["legacy", "rollout"]) {
   });
 }
 
+test("ChatGPT exports every message when a shared turn-key wrapper encloses the conversation", async t => {
+  const page = await openFixture(t, fixture(`<div data-turn-key="conversation">
+    ${message("user", "First prompt", "rollout", 1)}
+    ${message("assistant", "First answer", "rollout", 2)}
+    ${message("user", "Second prompt", "rollout", 3)}
+    ${message("assistant", "Second answer", "rollout", 4)}
+  </div>`));
+  const pending = page.waitForEvent("download");
+  await page.locator("#ccx-export-host button").click();
+  const text = await readFile(await (await pending).path(), "utf8");
+  for (const expected of ["First prompt", "First answer", "Second prompt", "Second answer"]) {
+    assert.ok(text.includes(expected), `export must include ${expected}`);
+  }
+  assert.equal((text.match(/^## User$/gm) || []).length, 2);
+  assert.equal((text.match(/^## ChatGPT$/gm) || []).length, 2);
+  assert.equal(await page.locator(".ccx-turn").count(), 4);
+  assert.equal(await page.locator("[data-turn-key=conversation].ccx-turn").count(), 0);
+});
+
+test("ChatGPT paired turn wrappers export both user and assistant messages", async t => {
+  const page = await openFixture(t, fixture([1, 2].map(index => `
+    <article data-testid="conversation-turn-${index}" data-turn-key="pair-${index}">
+      <div data-message-author-role="user"><div data-user-message-bubble>Prompt ${index}</div></div>
+      <div data-message-author-role="assistant"><div class="markdown"><p>Answer ${index}</p></div></div>
+    </article>`).join("")));
+  const pending = page.waitForEvent("download");
+  await page.locator("#ccx-export-host button").click();
+  const text = await readFile(await (await pending).path(), "utf8");
+  assert.deepEqual([...text.matchAll(/^## (User|ChatGPT)$/gm)].map(match => match[1]), ["User", "ChatGPT", "User", "ChatGPT"]);
+  for (const expected of ["Prompt 1", "Answer 1", "Prompt 2", "Answer 2"]) assert.ok(text.includes(expected));
+  assert.equal(await page.locator(".ccx-toggle").count(), 4);
+});
+
+test("ChatGPT empty preferred markdown placeholders fall back to assistant body", async t => {
+  const page = await openFixture(t, fixture(message("user", "Prompt") + `
+    <article data-testid="conversation-turn-2" data-turn="assistant">
+      <div data-message-author-role="assistant"><div class="markdown"></div><div data-markdown-text-style="assistant-message"><p>Actual answer</p></div></div>
+    </article>`));
+  const pending = page.waitForEvent("download");
+  await page.locator("#ccx-export-host button").click();
+  const text = await readFile(await (await pending).path(), "utf8");
+  assert.ok(text.includes("## ChatGPT\n\nActual answer"));
+});
+
+test("ChatGPT shared articles are not promoted to a single user turn", async t => {
+  const page = await openFixture(t, fixture(`<article>
+    <div data-message-author-role="user">First prompt</div>
+    <div data-message-author-role="assistant"><div class="markdown"><p>First answer</p></div></div>
+    <div data-message-role="user">Second prompt</div>
+    <div data-message-role="assistant"><div class="markdown"><p>Second answer</p></div></div>
+  </article>`));
+  await waitForTurns(page, 4);
+  assert.deepEqual(await page.locator("#ccx-outline-host .item").allTextContents(), ["First prompt", "Second prompt"]);
+});
+
 test("mixed legacy and rollout fallback nodes retain document order and avoid duplicate controls", async t => {
   const page = await openFixture(t, fixture(
     message("user", "First prompt", "legacy") +

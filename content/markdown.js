@@ -92,7 +92,10 @@
         : [".markdown", '[data-markdown-text-style="assistant-message"]', '[data-message-author-role="assistant"]', '[data-message-role="assistant"]', '[data-chatgpt-search-unit-key$=":assistant"]']);
     for (const selector of selectors) {
       const nodes = clone.matches(selector) ? [clone] : [...clone.querySelectorAll(selector)];
-      if (nodes.length) return nodes.map(node => convert(node, role === "user")).filter(Boolean).join("\n\n");
+      // A preferred hook can be an empty streaming/virtualized placeholder.
+      // Try the next content selector instead of dropping the entire reply.
+      const text = nodes.map(node => convert(node, role === "user")).filter(Boolean).join("\n\n");
+      if (text) return text;
     }
     // Native response toolbars/thinking panels are not message contents.
     clone.querySelectorAll('h5, response-container-header, model-thoughts, .response-footer, .response-container-header, .query-actions, .response-actions').forEach(node => node.remove());

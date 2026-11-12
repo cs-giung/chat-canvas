@@ -2,6 +2,14 @@
 
 All notable changes to Chat Canvas are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.1] - 2026-11-12
+
+### Fixed
+
+- ChatGPT message discovery no longer treats shared conversation or user/assistant-pair wrappers as a single user message, which could omit AI replies from Markdown exports.
+- Empty preferred Markdown placeholders now fall back to other assistant content hooks instead of silently skipping the response.
+- Added regression coverage for shared turn-key wrappers, paired turns, shared articles, and empty assistant placeholders.
+
 ## [1.2.0] - 2026-11-12
 
 ### Added
@@ -60,6 +68,7 @@ All notable changes to Chat Canvas are documented here. The project follows [Sem
 - Light, dark, mobile, and reduced-motion styles.
 - Manifest V3 packaging with minimal permissions and no remote code.
 
+[1.2.1]: https://github.com/cs-giung/chat-canvas/releases/tag/v1.2.1
 [1.2.0]: https://github.com/cs-giung/chat-canvas/releases/tag/v1.2.0
 [1.1.1]: https://github.com/cs-giung/chat-canvas/releases/tag/v1.1.1
 [1.1.0]: https://github.com/cs-giung/chat-canvas/releases/tag/v1.1.0
