@@ -5,5 +5,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 node --check content/content.js
+node --check content/markdown.js
 node --check popup/popup.js
 node scripts/validate.mjs

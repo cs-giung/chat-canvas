@@ -7,7 +7,7 @@
     width: 88,
     collapseEnabled: true,
     outlineEnabled: true,
-    sites: { chatgpt: true, claude: true, gemini: true }
+    sites: { chatgpt: true, gemini: true }
   };
 
   const SITE_CONFIG = {
@@ -50,34 +50,6 @@
         'textarea[aria-label="Chat with ChatGPT" i]'
       ]
     },
-    claude: {
-      host: "claude.ai",
-      turns: [
-        '[data-test-render-count]:has([data-testid="user-message"])',
-        '[data-test-render-count]:has(.font-user-message)',
-        '[data-test-render-count]:has(.font-claude-response)',
-        '[data-test-render-count]:has(.font-claude-message)',
-        '[data-test-render-count]:has([data-is-streaming])',
-        '[data-test-render-count]:has([data-testid="file-thumbnail"]):not(:has(.font-claude-response, .font-claude-message, [data-is-streaming]))',
-        '[data-testid="user-message"]',
-        '[data-testid="assistant-message"]',
-        '[data-is-streaming]'
-      ],
-      users: [
-        '[data-testid="user-message"]',
-        '.font-user-message'
-      ],
-      assistants: [
-        '[data-testid="assistant-message"]',
-        '.font-claude-response',
-        '.font-claude-message',
-        '[data-is-streaming]'
-      ],
-      composers: [
-        '[data-testid="chat-input"]',
-        'div[contenteditable="true"].ProseMirror'
-      ]
-    },
     gemini: {
       host: "gemini.google.com",
       turns: ['user-query', 'model-response'],
@@ -103,6 +75,8 @@
     panelHost: null,
     panelShadow: null,
     outlineList: null,
+    exportHost: null,
+    outlineMinimized: false,
     turnNumber: 0,
     pageKey: location.pathname + location.search,
     turnData: new Map()
@@ -164,6 +138,8 @@
 
     if (!active) {
       removePanel();
+      state.exportHost?.remove();
+      state.exportHost = null;
       clearWideTargets();
       document.querySelectorAll(".ccx-turn").forEach(cleanTurn);
       return;
@@ -198,10 +174,6 @@
     }
     if (matchesAny(root, config.users)) return "user";
     if (matchesAny(root, config.assistants)) return "assistant";
-    if (
-      siteKey === "claude" &&
-      root.querySelector('[data-testid="file-thumbnail"]')
-    ) return "user";
     if (siteKey === "gemini") {
       if (root.matches("user-query")) return "user";
       if (root.matches("model-response")) return "assistant";
@@ -249,7 +221,7 @@
 
   function getTurnData(root) {
     const message = root.querySelector('[data-message-id], [data-chatgpt-search-message-ids]');
-    // Generic test IDs (e.g. Claude's user-message) repeat across messages.
+    // Generic test IDs can repeat across messages.
     // Only ChatGPT's numbered turn test IDs identify a particular turn.
     const identity = (siteKey === "chatgpt" && (
       root.getAttribute("data-turn-id") || root.getAttribute("data-turn-key") ||
@@ -320,7 +292,8 @@
       "ccx-unknown",
       "ccx-collapsed",
       "ccx-wide-target",
-      "ccx-wide-column"
+      "ccx-wide-column",
+      "ccx-gemini-response"
     );
     root.querySelectorAll(":scope > .ccx-toggle, :scope > .ccx-summary")
       .forEach((node) => node.remove());
@@ -328,9 +301,9 @@
   }
 
   function clearWideTargets() {
-    document.querySelectorAll(".ccx-wide-target, .ccx-wide-column, .ccx-composer-target")
+    document.querySelectorAll(".ccx-wide-target, .ccx-wide-column, .ccx-composer-target, .ccx-gemini-response")
       .forEach((node) =>
-        node.classList.remove("ccx-wide-target", "ccx-wide-column", "ccx-composer-target")
+        node.classList.remove("ccx-wide-target", "ccx-wide-column", "ccx-composer-target", "ccx-gemini-response")
       );
   }
 
@@ -379,6 +352,12 @@
           );
         }
       }
+      if (siteKey === "gemini" && root.matches("model-response")) {
+        // Gemini also constrains the response INSIDE model-response. Widen
+        // only layout shells, not code blocks, tables or the user bubble.
+        queryAll([".response-container", ".response-container-content", ".response-content", "message-content"], root)
+          .forEach((element) => element.classList.add("ccx-wide-target", "ccx-gemini-response"));
+      }
       // The classic ChatGPT layout constrains a wrapper directly inside each
       // turn. Do not apply this broadly: on other layouts the first native
       // child can be the colored user bubble itself.
@@ -394,7 +373,7 @@
         }
       }
 
-      // Some hosts (notably Claude) stack multiple centered max-width
+      // Some hosts stack multiple centered max-width
       // wrappers. Apply the configured percentage once to the outermost
       // constraint, then let every inner constraint fill that column.
       const constrained = findConstrainedColumns(root.parentElement);
@@ -469,11 +448,13 @@
         .item:hover { color:var(--panel-fg); background:rgba(127,127,127,.12); }
         .item.active { color:var(--panel-fg); background:rgba(16,163,127,.16); }
         .empty { color:var(--panel-muted); padding:14px 9px; text-align:center; }
-        .panel.minimized { width:auto; min-width:150px; }
-        .panel.minimized .actions, .panel.minimized .list { display:none; }
-        .panel.minimized .header { border-bottom:0; padding:8px 10px; }
+        .panel.minimized { width:32px; height:32px; border-radius:10px; }
+        .panel.minimized .actions, .panel.minimized .list,
+        .panel.minimized .title, .panel.minimized .count,
+        .panel.minimized .spacer { display:none; }
+        .panel.minimized .header { border-bottom:0; padding:3px; }
       </style>
-      <aside class="panel" aria-label="Conversation outline">
+      <aside class="panel${state.outlineMinimized ? " minimized" : ""}" aria-label="Conversation outline">
         <div class="header">
           <span class="title">Outline</span><span class="count"></span><span class="spacer"></span>
           <button class="icon minimize" title="Minimize outline" aria-label="Minimize outline">−</button>
@@ -493,12 +474,18 @@
       document.querySelectorAll(".ccx-user, .ccx-assistant")
         .forEach((root) => setCollapsed(root, false))
     );
-    shadow.querySelector(".minimize").addEventListener("click", (event) => {
+    const minimize = shadow.querySelector(".minimize");
+    const updateMinimize = () => {
+      minimize.textContent = state.outlineMinimized ? "+" : "−";
+      minimize.title = state.outlineMinimized ? "Expand outline" : "Minimize outline";
+      minimize.setAttribute("aria-label", minimize.title);
+      minimize.setAttribute("aria-expanded", String(!state.outlineMinimized));
+    };
+    updateMinimize();
+    minimize.addEventListener("click", () => {
       const panel = shadow.querySelector(".panel");
-      const minimized = panel.classList.toggle("minimized");
-      event.currentTarget.textContent = minimized ? "+" : "−";
-      event.currentTarget.title = minimized ? "Expand outline" : "Minimize outline";
-      event.currentTarget.setAttribute("aria-label", event.currentTarget.title);
+      state.outlineMinimized = panel.classList.toggle("minimized");
+      updateMinimize();
     });
 
     document.documentElement.append(host);
@@ -570,6 +557,49 @@
     );
   }
 
+  function updateExport(turns) {
+    if (!turns.length) {
+      state.exportHost?.remove();
+      state.exportHost = null;
+      return;
+    }
+    if (state.exportHost?.isConnected) return;
+    const host = document.createElement("div");
+    host.id = "ccx-export-host";
+    const shadow = host.attachShadow({ mode: "open" });
+    shadow.innerHTML = `
+      <style>
+        :host { all:initial; }
+        button { position:fixed; right:16px; bottom:16px; z-index:2147483646;
+          padding:8px 12px; border:1px solid #8886; border-radius:10px;
+          background:#fff; color:#202123; cursor:pointer;
+          box-shadow:0 2px 12px #0002; font:13px system-ui; }
+        button:hover { background:#e9f5ef; }
+        @media (prefers-color-scheme:dark) { button { background:#232326; color:#f4f4f5; } }
+      </style>
+      <button type="button" title="Save currently loaded messages as Markdown. Scroll through older messages first; wait for replies to finish.">Export .md</button>`;
+    shadow.querySelector("button").addEventListener("click", () => {
+      const current = getTurnRoots();
+      const result = globalThis.ChatCanvasMarkdown.conversation(current.map(root => ({
+        role: classifyTurn(root), root
+      })), { site: siteKey, title: document.title, url: location.href });
+      const button = shadow.querySelector("button");
+      if (!result.count) {
+        button.textContent = "No loaded messages";
+        return;
+      }
+      const url = URL.createObjectURL(new Blob([result.markdown], { type: "text/markdown;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.filename;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      button.textContent = result.skipped ? `Saved (${result.skipped} unloaded skipped)` : "Export .md";
+    });
+    document.documentElement.append(host);
+    state.exportHost = host;
+  }
+
   function processPage() {
     if (!isActive()) return;
     // Extension DOM writes must not feed back into the page observer.
@@ -589,6 +619,7 @@
       turns.forEach((root) => ensureTurn(root, classifyTurn(root)));
       markWideTargets(turns);
       updateOutline(turns);
+      updateExport(turns);
     } finally {
       observePage();
     }
@@ -626,7 +657,7 @@
           ? mutation.target : mutation.target.parentElement;
         // Our own processing writes happen while disconnected. A host render
         // removing our controls or panel should schedule their restoration.
-        return !target?.closest("#ccx-outline-host, .ccx-toggle, .ccx-summary");
+        return !target?.closest("#ccx-outline-host, #ccx-export-host, .ccx-toggle, .ccx-summary");
       });
       if (meaningful) scheduleProcess();
     });

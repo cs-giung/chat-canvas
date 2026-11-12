@@ -2,6 +2,23 @@
 
 All notable changes to Chat Canvas are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-11-12
+
+### Added
+
+- Local Markdown downloads for ChatGPT and Gemini with message roles, source URL, rich text, nested lists, code fences, tables, and TeX math.
+- Export controls independent of the outline, including collapsed messages and reporting skipped unloaded shells.
+- Browser regression tests for Markdown downloads, Gemini response alignment, and minimal outlines.
+
+### Changed
+
+- Minimized outlines now display only a small `+` button and retain their minimized state when the host remounts the panel.
+- Gemini's internal response wrappers fill the widened conversation column rather than remaining centered at the native width.
+
+### Removed
+
+- Claude site access, adapter, and popup setting. Existing ChatGPT/Gemini preferences are retained.
+
 ## [1.1.1] - 2026-10-05
 
 ### Fixed
@@ -43,6 +60,7 @@ All notable changes to Chat Canvas are documented here. The project follows [Sem
 - Light, dark, mobile, and reduced-motion styles.
 - Manifest V3 packaging with minimal permissions and no remote code.
 
+[1.2.0]: https://github.com/cs-giung/chat-canvas/releases/tag/v1.2.0
 [1.1.1]: https://github.com/cs-giung/chat-canvas/releases/tag/v1.1.1
 [1.1.0]: https://github.com/cs-giung/chat-canvas/releases/tag/v1.1.0
 [1.0.0]: https://github.com/cs-giung/chat-canvas/releases/tag/v1.0.0

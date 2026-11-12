@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { before, after, test } from "node:test";
 import { chromium } from "playwright";
 import { fileURLToPath } from "node:url";
+import { readFile } from "node:fs/promises";
 
 const script = fileURLToPath(new URL("../content/content.js", import.meta.url));
+const markdownScript = fileURLToPath(new URL("../content/markdown.js", import.meta.url));
 const stylesheet = fileURLToPath(new URL("../content/content.css", import.meta.url));
 let browser;
 
@@ -76,6 +78,7 @@ async function openFixture(t, html, host = "chatgpt.com", settings = {}) {
   t.after(() => assert.deepEqual(errors, [], "content script should not throw"));
   await page.goto(`https://${host}/c/fixture`);
   await page.addStyleTag({ path: stylesheet });
+  await page.addScriptTag({ path: markdownScript });
   await page.addScriptTag({ path: script });
   await page.waitForFunction(() => document.documentElement.classList.contains("ccx-active"));
   return page;
@@ -219,18 +222,98 @@ test("mobile fallback turns use the available column width", async t => {
 
 test("repeated generic test IDs do not share labels or collapse state", async t => {
   const page = await openFixture(t, fixture(
-    '<div data-testid="user-message">First Claude prompt</div><div data-testid="user-message">Second Claude prompt</div>'
-  ), "claude.ai");
+    '<user-query>First Gemini prompt</user-query><user-query>Second Gemini prompt</user-query>'
+  ), "gemini.google.com");
   await waitForTurns(page, 2);
-  assert.deepEqual(await page.locator("#ccx-outline-host .item").allTextContents(), ["First Claude prompt", "Second Claude prompt"]);
+  assert.deepEqual(await page.locator("#ccx-outline-host .item").allTextContents(), ["First Gemini prompt", "Second Gemini prompt"]);
   await page.locator('.ccx-user > .ccx-toggle').first().click();
   await page.evaluate(() => window.changeSettings({ width: 90 }));
   assert.equal(await page.locator(".ccx-collapsed").count(), 1);
-  assert.equal(await page.locator(".ccx-collapsed > .ccx-summary").textContent(), "First Claude prompt");
+  assert.equal(await page.locator(".ccx-collapsed > .ccx-summary").textContent(), "First Gemini prompt");
+});
+
+test("minimized outline is only a small plus and survives host remounts", async t => {
+  const page = await openFixture(t, fixture(message("user", "Prompt")));
+  const host = page.locator("#ccx-outline-host");
+  await host.locator(".minimize").click();
+  assert.equal(await host.locator(".minimize").textContent(), "+");
+  assert.equal(await host.locator(".title").isVisible(), false);
+  assert.equal(await host.locator(".count").isVisible(), false);
+  const rect = await host.locator(".panel").boundingBox();
+  assert.ok(rect.width <= 34 && rect.height <= 34);
+  await host.evaluate(node => node.remove());
+  await page.waitForFunction(() => document.querySelector("#ccx-outline-host")?.shadowRoot.querySelector(".panel.minimized"));
+  await host.locator(".minimize").click();
+  assert.equal(await host.locator(".list").isVisible(), true);
+});
+
+test("Gemini response inner shells fill the wide column and restore native constraints", async t => {
+  const page = await openFixture(t, fixture(`<style>
+    .response-container { max-width:700px; margin:auto; display:flex; }
+    .response-container-content { max-width:600px; margin:auto; }
+    message-content { display:block; max-width:560px; margin:auto; }
+    .query-text { width:fit-content; margin-left:auto; }
+  </style><user-query><div class="query-text">Prompt</div></user-query>
+  <model-response><div class="response-container"><div class="response-container-content"><message-content><p>Answer</p></message-content></div></div></model-response>`), "gemini.google.com");
+  const column = await page.locator(".conversation").boundingBox();
+  const content = await page.locator("message-content").boundingBox();
+  assert.ok(Math.abs(column.x - content.x) < 2);
+  assert.ok(Math.abs(column.width - content.width) < 2);
+  assert.ok((await page.locator(".query-text").boundingBox()).x > column.x + column.width / 2);
+  await page.evaluate(() => window.changeSettings({ wideEnabled:false }));
+  assert.equal(await page.locator(".ccx-gemini-response").count(), 0);
+  assert.ok((await page.locator("message-content").boundingBox()).width <= 560);
+});
+
+for (const host of ["chatgpt.com", "gemini.google.com"]) {
+  test(`${host}: Markdown downloads preserve rich content without page controls`, async t => {
+    const body = `<h2>Details</h2><p><strong>Bold</strong> and <em>italic</em> <a href="https://example.com/docs">docs</a></p>
+      <ul><li>First<ul><li>Nested</li></ul></li><li>Second</li></ul>
+      <ol start="3"><li>Third</li></ol><blockquote><p>A quote</p></blockquote>
+      <pre><button>Copy code</button><code class="language-js">const value = \x60\x60\x60;\n  keepIndent();</code></pre>
+      <p>Inline <code>a\x60b</code></p>
+      <table><thead><tr><th>Name</th><th>Value</th></tr></thead><tbody><tr><td>A|B</td><td>42</td></tr></tbody></table>
+      <span class="katex"><span aria-hidden="true">duplicate math</span><math><semantics><annotation encoding="application/x-tex">x^2</annotation></semantics></math></span>
+      <div class="katex-display"><span class="katex"><math><annotation encoding="application/x-tex">y=2x</annotation></math></span></div>`;
+    const turns = host === "chatgpt.com" ? message("user", "A prompt") + message("assistant", body)
+      : `<user-query><div class="query-text">A prompt</div><button>Edit</button></user-query><model-response><model-thoughts>Private thinking UI</model-thoughts><message-content><div class="markdown">${body}</div></message-content><button>Copy</button></model-response>`;
+    const page = await openFixture(t, fixture(turns), host, { outlineEnabled:false });
+    await page.evaluate(() => document.title = "Export: demo/test");
+    await page.locator(".ccx-assistant > .ccx-toggle").click();
+    const pending = page.waitForEvent("download");
+    await page.locator("#ccx-export-host button").click();
+    const download = await pending;
+    assert.equal(download.suggestedFilename(), "Export- demo-test.md");
+    const text = await readFile(await download.path(), "utf8");
+    for (const expected of ["# Export: demo/test", "Source: https://", "## User", "A prompt", host === "chatgpt.com" ? "## ChatGPT" : "## Gemini", "## Details", "**Bold**", "*italic*", "[docs](<https://example.com/docs>)", "- First", "  - Nested", "3. Third", "> A quote", "\x60\x60\x60\x60js\nconst value = \x60\x60\x60;\n  keepIndent();\n\x60\x60\x60\x60", "\x60\x60a\x60b\x60\x60", "| A\\|B | 42 |", "$x^2$", "$$\ny=2x\n$$"]) {
+      assert.ok(text.includes(expected), `missing ${expected} in:\n${text}`);
+    }
+    for (const excluded of ["Copy", "Edit", "Private thinking UI", "duplicate math", "Collapsed message"]) assert.ok(!text.includes(excluded));
+    assert.equal(await page.locator(".ccx-collapsed").count(), 1, "export must not expand the live message");
+    assert.equal(await page.locator("#ccx-outline-host").count(), 0);
+    await page.evaluate(() => window.changeSettings({ enabled:false }));
+    assert.equal(await page.locator("#ccx-export-host").count(), 0);
+  });
+}
+
+test("exports reflect current SPA conversation and skip empty virtualized shells", async t => {
+  const page = await openFixture(t, fixture(message("user", "Old prompt")));
+  await page.evaluate(() => {
+    history.pushState({}, "", "/c/new-chat");
+    document.querySelector(".conversation").innerHTML = '<section data-turn="user"></section><section data-turn="assistant"><p>New answer</p></section>';
+  });
+  await waitForTurns(page, 2);
+  const pending = page.waitForEvent("download");
+  await page.locator("#ccx-export-host button").click();
+  const text = await readFile(await (await pending).path(), "utf8");
+  assert.ok(text.includes("New answer"));
+  assert.ok(text.includes("/c/new-chat"));
+  assert.ok(!text.includes("Old prompt"));
+  assert.ok(!text.includes("## User"));
+  assert.match(await page.locator("#ccx-export-host button").textContent(), /1 unloaded skipped/);
 });
 
 for (const [host, turns, composer] of [
-  ["claude.ai", '<div data-test-render-count="1"><div data-testid="user-message">Claude prompt</div></div><div data-test-render-count="2"><div class="font-claude-response">Claude answer</div></div>', '<div data-testid="chat-input" contenteditable="true"></div>'],
   ["gemini.google.com", '<user-query>Gemini prompt</user-query><model-response>Gemini answer</model-response>', '<rich-textarea><div contenteditable="true"></div></rich-textarea>']
 ]) {
   test(`${host}: existing message detection and controls still work`, async t => {

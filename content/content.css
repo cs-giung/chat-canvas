@@ -49,6 +49,15 @@ html.ccx-wide .ccx-turn [data-message-role="assistant"] {
   max-width: 100% !important;
 }
 
+/* Gemini centers inner response shells independently of model-response.
+   Fill the widened column and anchor the AI text at its left edge. */
+html.ccx-wide model-response .ccx-gemini-response {
+  min-width: 0 !important;
+  margin-inline: 0 !important;
+  align-self: stretch !important;
+  flex: 1 1 auto !important;
+}
+
 /* Keep the composer aligned with widened messages without changing its height. */
 html.ccx-wide .ccx-composer-target {
   box-sizing: border-box !important;

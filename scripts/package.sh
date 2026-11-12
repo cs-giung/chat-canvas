@@ -13,7 +13,7 @@ trap 'rm -rf "$STAGING"' EXIT
 
 mkdir -p "$STAGING/content" "$STAGING/icons" "$STAGING/popup" dist
 cp manifest.json LICENSE README.md PRIVACY.md CHANGELOG.md "$STAGING/"
-cp content/content.js content/content.css "$STAGING/content/"
+cp content/content.js content/markdown.js content/content.css "$STAGING/content/"
 cp icons/icon-16.png icons/icon-32.png icons/icon-48.png icons/icon-128.png "$STAGING/icons/"
 cp popup/popup.html popup/popup.css popup/popup.js "$STAGING/popup/"
 

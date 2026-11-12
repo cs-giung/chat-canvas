@@ -18,8 +18,9 @@ _Click the preview to open the higher-quality MP4 recording._
 - Manually collapsible user messages and AI replies
 - Collapse-all and expand-all controls
 - Live conversation outline generated from your prompts
-- Compact outline mode that retains the prompt count and expand button
-- Per-site controls for ChatGPT, Claude, and Gemini
+- Minimal outline mode showing only a small `+` button
+- Markdown export with message roles, code blocks, tables, links, and TeX math
+- Per-site controls for ChatGPT and Gemini
 - Light mode, dark mode, and reduced-motion support
 - No analytics, accounts, remote code, or network requests
 
@@ -32,7 +33,7 @@ _Click the preview to open the higher-quality MP4 recording._
 3. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge.
 4. Enable **Developer mode**.
 5. Select **Load unpacked** and choose the unzipped directory.
-6. Pin **Chat Canvas**, then refresh any open ChatGPT, Claude, or Gemini tabs.
+6. Pin **Chat Canvas**, then refresh any open ChatGPT or Gemini tabs.
 
 ### From source
 
@@ -48,7 +49,9 @@ Load the cloned `chat-canvas` directory as an unpacked extension using the steps
 - Click the subtle vertical bar beside a message to collapse it.
 - Click a collapsed preview to expand it.
 - Use the floating outline to jump to a prompt or collapse/expand all messages.
-- Select `−` to compact the outline to its title, prompt count, and `+` button.
+- Select `−` to minimize the outline to a small `+` button; select `+` to restore it.
+- Click **Export .md** in the bottom-right corner to download the currently loaded conversation. This works even with the outline disabled. The file includes the page title, source URL, and separate user/AI messages.
+- Before exporting, scroll through older messages to load available history and wait for the response to finish. Virtualized/unloaded messages cannot be recovered from the page; empty shells are skipped. Attachments and generated images are not downloaded, though available public image URLs are preserved.
 - Disable individual features or supported sites from the popup at any time.
 
 ## Privacy and permissions
@@ -56,10 +59,9 @@ Load the cloned `chat-canvas` directory as an unpacked extension using the steps
 Chat Canvas requests only Chrome's `storage` permission, which stores and optionally browser-syncs preferences. Its content scripts are restricted to:
 
 - `https://chatgpt.com/*`
-- `https://claude.ai/*`
 - `https://gemini.google.com/*`
 
-Rendered message text is processed temporarily in the page to create outline labels and collapsed previews. Conversation text is never stored or transmitted by Chat Canvas. See [PRIVACY.md](PRIVACY.md) for the complete policy.
+Rendered message text is processed temporarily in the page to create outline labels, collapsed previews, and user-requested Markdown downloads. Conversation text is never written to extension storage or transmitted by Chat Canvas; exported files are saved locally at your request. See [PRIVACY.md](PRIVACY.md) for the complete policy.
 
 ## Development
 
@@ -77,7 +79,7 @@ After changing extension files, reload Chat Canvas from `chrome://extensions` an
 
 To update an existing unpacked installation, replace its files with the updated source (or run `git pull` in the cloned directory), select **Reload** for Chat Canvas in `chrome://extensions`, and refresh your chat tabs. Reloading the extension alone does not update content scripts already running in open tabs.
 
-The browser tests cover old and new ChatGPT message attributes, nested width constraints, streaming, virtualized message remounts, conversation navigation, preference changes, and existing Claude/Gemini controls. These fixtures complement manual checks on signed-in sites. On ChatGPT, prompt labels for off-screen turns fill in when their text is first rendered; labels already seen remain available while that conversation is open.
+The browser tests cover old and new ChatGPT message attributes, nested width constraints, streaming, virtualized message remounts, conversation navigation, preference changes, Gemini response alignment, minimized outlines, and Markdown downloads. These fixtures complement manual checks on signed-in sites. On ChatGPT, prompt labels for off-screen turns fill in when their text is first rendered; labels already seen remain available while that conversation is open.
 
 AI products change their markup frequently. Platform selectors are grouped near the top of [`content/content.js`](content/content.js). Please include the affected site and browser version in bug reports.
 
@@ -89,7 +91,7 @@ AI products change their markup frequently. Platform selectors are grouped near 
 
 ## Disclaimer
 
-Chat Canvas is an independent open-source project. It is not affiliated with, endorsed by, or sponsored by Anthropic, OpenAI, or Google. Claude, ChatGPT, and Gemini are trademarks of their respective owners.
+Chat Canvas is an independent open-source project. It is not affiliated with, endorsed by, or sponsored by OpenAI or Google. ChatGPT and Gemini are trademarks of their respective owners.
 
 ## License
 

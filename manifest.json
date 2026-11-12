@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Chat Canvas: Wide, Collapse & Outline",
   "short_name": "Chat Canvas",
-  "version": "1.1.1",
-  "description": "Widen AI chats, collapse long replies, and navigate conversations with an automatic outline.",
+  "version": "1.2.0",
+  "description": "Widen ChatGPT and Gemini chats, collapse messages, navigate outlines, and export conversations as Markdown.",
   "permissions": ["storage"],
   "action": {
     "default_title": "Chat Canvas settings",
@@ -25,10 +25,9 @@
     {
       "matches": [
         "https://chatgpt.com/*",
-        "https://claude.ai/*",
         "https://gemini.google.com/*"
       ],
-      "js": ["content/content.js"],
+      "js": ["content/markdown.js", "content/content.js"],
       "css": ["content/content.css"],
       "run_at": "document_idle"
     }

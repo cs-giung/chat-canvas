@@ -12,7 +12,6 @@ const assert = (condition, message) => {
 const manifest = JSON.parse(read("manifest.json"));
 const expectedMatches = [
   "https://chatgpt.com/*",
-  "https://claude.ai/*",
   "https://gemini.google.com/*"
 ];
 
@@ -46,7 +45,7 @@ for (const [size, file] of Object.entries(manifest.icons)) {
 }
 
 const executableSources = [
-  "content/content.js",
+  ...manifest.content_scripts.flatMap(entry => entry.js),
   "popup/popup.js",
   "popup/popup.html"
 ].map(read).join("\n");

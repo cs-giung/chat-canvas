@@ -6,7 +6,7 @@ const DEFAULTS = {
   width: 88,
   collapseEnabled: true,
   outlineEnabled: true,
-  sites: { chatgpt: true, claude: true, gemini: true }
+  sites: { chatgpt: true, gemini: true }
 };
 
 const ids = [
